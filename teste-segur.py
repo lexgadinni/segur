@@ -40,6 +40,17 @@ def download_image(image_url):
         st.error(f"Erro ao baixar a imagem: {e}")
         return None
 
+# Função para contar o número de linhas de texto em uma célula (baseado na largura)
+def get_num_lines(text, cell_width, pdf):
+    # Definir fonte temporária para obter o tamanho
+    pdf.set_font("Arial", '', 10)
+    # Calcular a largura do texto
+    text_width = pdf.get_string_width(text)
+    # Estimar o número de linhas necessárias
+    num_lines = text_width / cell_width
+    # Arredondar para cima o número de linhas
+    return max(1, int(num_lines))
+
 # Função para gerar o PDF com os dados
 def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf = FPDF()
@@ -61,19 +72,41 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
 
     pdf.ln(10)  # Linha em branco
 
+    # Larguras das colunas
+    question_width = 80
+    response_width = 40
+    weight_width = 40
+
     # Tabela de dados
     pdf.set_font("Arial", '', 10)
-    pdf.cell(80, 10, 'Pergunta', border=1, align='C')  # Tamanho da célula ajustado
-    pdf.cell(40, 10, 'Resposta', border=1, align='C')
-    pdf.cell(40, 10, 'Peso', border=1, align='C')
+    pdf.cell(question_width, 10, 'Pergunta', border=1, align='C')
+    pdf.cell(response_width, 10, 'Resposta', border=1, align='C')
+    pdf.cell(weight_width, 10, 'Peso', border=1, align='C')
     pdf.ln()
 
     # Ajuste da tabela para o conteúdo
     for question, response, weight in zip(data['Pergunta'], data['Resposta'], data['Peso']):
-        pdf.multi_cell(80, 10, question, border=1)  # Usar multi_cell para ajustar o texto da pergunta
-        pdf.set_xy(pdf.get_x() + 80, pdf.get_y() - 10)  # Mover o cursor para a próxima célula na linha
-        pdf.cell(40, 10, response, border=1)
-        pdf.cell(40, 10, str(weight), border=1)
+        # Calcular o número de linhas que a pergunta ocupará
+        num_lines = get_num_lines(question, question_width, pdf)
+        line_height = 5  # Altura de cada linha
+        
+        # Usar multi_cell para a pergunta (coluna larga)
+        pdf.multi_cell(question_width, line_height, question, border=1)
+        
+        # Mover o cursor de volta para a linha da resposta e peso
+        x_current = pdf.get_x() + question_width
+        y_current = pdf.get_y() - (num_lines * line_height)  # Mover para a linha superior
+        
+        # Ajustar a altura das células de resposta e peso para se alinharem à pergunta
+        pdf.set_xy(x_current, y_current)
+        pdf.multi_cell(response_width, num_lines * line_height, response, border=1, align='C')
+        
+        # Colocar o peso ao lado da resposta com a mesma altura
+        x_next = pdf.get_x() + response_width
+        pdf.set_xy(x_next, y_current)
+        pdf.multi_cell(weight_width, num_lines * line_height, str(weight), border=1, align='C')
+        
+        # Após a última célula, mover o cursor para a próxima linha
         pdf.ln()
 
     # Adicionar o percentual de risco e a explicação
