@@ -98,12 +98,12 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
         
         # Ajustar a altura das células de resposta
         pdf.set_xy(x_current, y_current)
-        pdf.multi_cell(response_width, num_lines_response * line_height, response, border=1, align='C')
+        pdf.multi_cell(response_width, line_height, response, border=1, align='C')
 
         # Ajustar a altura das células de peso
         x_next = pdf.get_x() + response_width
         pdf.set_xy(x_next, y_current)
-        pdf.multi_cell(weight_width, num_lines_weight * line_height, str(weight), border=1, align='C')
+        pdf.multi_cell(weight_width, line_height, str(weight), border=1, align='C')
 
         # Mover para a próxima linha após processar as três colunas
         pdf.ln(max(num_lines_question, num_lines_response, num_lines_weight) * line_height)
