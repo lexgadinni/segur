@@ -42,25 +42,21 @@ def download_image(image_url):
 
 # Função para contar o número de linhas de texto em uma célula (baseado na largura)
 def get_num_lines(text, cell_width, pdf):
-    # Definir fonte temporária para obter o tamanho
-    pdf.set_font("Arial", '', 10)
-    # Calcular a largura do texto
-    text_width = pdf.get_string_width(text)
-    # Estimar o número de linhas necessárias
-    num_lines = text_width / cell_width
-    # Arredondar para cima o número de linhas
-    return max(1, int(num_lines))
+    pdf.set_font("Arial", '', 10)  # Definir fonte
+    text_width = pdf.get_string_width(text)  # Calcular a largura do texto
+    num_lines = text_width / cell_width  # Estimar o número de linhas necessárias
+    return max(1, int(num_lines) + 1)  # Arredondar para cima o número de linhas
 
-# Função para gerar o PDF com os dados
+# Função para gerar o PDF com os dados ajustados
 def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    
-    # Adicionar o logo
+
+    # Adicionar o logo, se disponível
     if logo_path:
-        pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho do logo conforme necessário
-    
+        pdf.image(logo_path, x=10, y=8, w=30)
+
     # Título
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt=f"Análise de Risco: {risk_analysis}", ln=True, align='C')
@@ -77,35 +73,39 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     response_width = 40
     weight_width = 40
 
-    # Tabela de dados
-    pdf.set_font("Arial", '', 10)
+    # Cabeçalho da tabela
+    pdf.set_font("Arial", 'B', 10)
     pdf.cell(question_width, 10, 'Pergunta', border=1, align='C')
     pdf.cell(response_width, 10, 'Resposta', border=1, align='C')
     pdf.cell(weight_width, 10, 'Peso', border=1, align='C')
     pdf.ln()
 
-    # Ajuste da tabela para o conteúdo
+    # Adicionar dados à tabela
+    pdf.set_font("Arial", '', 10)
     for question, response, weight in zip(data['Pergunta'], data['Resposta'], data['Peso']):
-        # Calcular o número de linhas que a pergunta ocupará
+        # Calcular o número de linhas para a pergunta
         num_lines = get_num_lines(question, question_width, pdf)
-        line_height = 5  # Altura de cada linha
-        total_height = num_lines * line_height  # Altura total da célula da pergunta
+        line_height = 5  # Definir altura da linha
         
-        # Usar multi_cell para a pergunta (coluna larga)
-        y_before = pdf.get_y()
+        # Adicionar a célula de pergunta com multi-cell para quebras de linha
         pdf.multi_cell(question_width, line_height, question, border=1)
-        y_after = pdf.get_y()
-        
-        # Definir a altura para a célula de resposta e peso, usando a mesma altura da pergunta
-        pdf.set_xy(pdf.get_x() + question_width, y_before)  # Mover o cursor para a célula de resposta
-        pdf.multi_cell(response_width, total_height, response, border=1, align='C')
 
-        pdf.set_xy(pdf.get_x() + response_width, y_before)  # Mover o cursor para a célula de peso
-        pdf.multi_cell(weight_width, total_height, str(weight), border=1, align='C')
+        # Obter a posição atual após a pergunta
+        x_current = pdf.get_x() + question_width
+        y_current = pdf.get_y() - (num_lines * line_height)
         
-        pdf.ln()
+        # Ajustar a altura das células de resposta e peso
+        pdf.set_xy(x_current, y_current)
+        pdf.multi_cell(response_width, num_lines * line_height, response, border=1, align='C')
 
-    # Adicionar o percentual de risco e a explicação
+        x_next = pdf.get_x() + response_width
+        pdf.set_xy(x_next, y_current)
+        pdf.multi_cell(weight_width, num_lines * line_height, str(weight), border=1, align='C')
+
+        # Mover para a próxima linha após processar as três colunas
+        pdf.ln(num_lines * line_height)
+
+    # Adicionar o percentual de risco
     pdf.ln(10)
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt=f"Percentual de Risco: {risk_percentage:.2f}%", ln=True)
@@ -121,11 +121,11 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     else:
         pdf.multi_cell(0, 10, txt="Risco muito alto: O risco está crítico e requer medidas imediatas e intensivas para mitigação.")
 
-    # Salvar o arquivo PDF em um diretório temporário
+    # Salvar o PDF temporariamente
     temp_dir = tempfile.mkdtemp()
     pdf_output = os.path.join(temp_dir, f"{risk_analysis.replace(' ', '_')}_analise.pdf")
     pdf.output(pdf_output)
-    
+
     return pdf_output
 
 # Permitir que o usuário insira o título da aplicação
@@ -198,5 +198,5 @@ if st.button('Salvar Análise como PDF'):
 
     # Fornecer o link para download
     st.success(f'Análise salva com sucesso como PDF!')
-    with open(pdf_file, "rb") as file:
-        st.download_button("Baixar PDF", data=file, file_name=f'{risk_analysis}_analise.pdf')
+    with open(pdf_file, "rb") as f:
+        st.download_button("Baixar PDF", f, file_name="analise_de_risco.pdf")
