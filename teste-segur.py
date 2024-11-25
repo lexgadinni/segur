@@ -4,6 +4,7 @@ import pandas as pd
 import os
 from fpdf import FPDF
 import tempfile
+import requests
 
 # Função para gerar o velocímetro
 def create_gauge(value):
@@ -25,6 +26,20 @@ def create_gauge(value):
     fig.update_layout(height=300, width=600)
     return fig
 
+# Função para baixar a imagem do GitHub e salvar temporariamente
+def download_image(image_url):
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # Garante que a resposta foi bem-sucedida
+        temp_dir = tempfile.mkdtemp()
+        image_path = os.path.join(temp_dir, "logo.png")
+        with open(image_path, "wb") as f:
+            f.write(response.content)
+        return image_path
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erro ao baixar a imagem: {e}")
+        return None
+
 # Função para gerar o PDF com os dados
 def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf = FPDF()
@@ -32,7 +47,8 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf.add_page()
     
     # Adicionar o logo
-    pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho do logo conforme necessário
+    if logo_path:
+        pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho do logo conforme necessário
     
     # Título
     pdf.set_font("Arial", 'B', 16)
@@ -137,8 +153,11 @@ if st.button('Salvar Análise como PDF'):
         'Peso': weights
     }
 
-    # Caminho do logo
-    logo_path = r"C:\Users\BR05720889\OneDrive - Prosegur Cia. De Seguridad, S.A\Documentos\textos html\SEGURPRO TESTE\images.png"
+    # URL da imagem no GitHub
+    image_url = "https://raw.githubusercontent.com/lexgadinni/segur/main/images.png"
+    
+    # Baixar a imagem do GitHub
+    logo_path = download_image(image_url)
     
     # Gerar o PDF
     pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
