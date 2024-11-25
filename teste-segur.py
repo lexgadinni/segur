@@ -2,6 +2,8 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 import os
+from fpdf import FPDF
+import tempfile
 
 # Função para gerar o velocímetro
 def create_gauge(value):
@@ -23,21 +25,61 @@ def create_gauge(value):
     fig.update_layout(height=300, width=600)
     return fig
 
-# Função para salvar os dados em um arquivo CSV
-def save_data_to_csv(data, filename):
-    # Cria um DataFrame
-    df = pd.DataFrame(data)
+# Função para gerar o PDF com os dados
+def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
     
-    # Caminho absoluto para a área de trabalho
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "analises_risco")
+    # Adicionar o logo
+    pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho do logo conforme necessário
     
-    # Verifica se a pasta de destino existe, se não, cria
-    if not os.path.exists(desktop_path):
-        os.makedirs(desktop_path)
+    # Título
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt=f"Análise de Risco: {risk_analysis}", ln=True, align='C')
+
+    pdf.ln(10)  # Linha em branco
+
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(200, 10, txt=f"Validado por: {validated_by}", ln=True)
+
+    pdf.ln(10)  # Linha em branco
+
+    # Tabela de dados
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(40, 10, 'Pergunta', border=1, align='C')
+    pdf.cell(40, 10, 'Resposta', border=1, align='C')
+    pdf.cell(40, 10, 'Peso', border=1, align='C')
+    pdf.ln()
+
+    for question, response, weight in zip(data['Pergunta'], data['Resposta'], data['Peso']):
+        pdf.cell(40, 10, question, border=1)
+        pdf.cell(40, 10, response, border=1)
+        pdf.cell(40, 10, str(weight), border=1)
+        pdf.ln()
+
+    # Adicionar o percentual de risco e a explicação
+    pdf.ln(10)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, txt=f"Percentual de Risco: {risk_percentage:.2f}%", ln=True)
+
+    # Texto explicativo baseado no risco
+    pdf.set_font("Arial", '', 12)
+    if risk_percentage <= 25:
+        pdf.multi_cell(0, 10, txt="Risco baixo: A análise indica que o risco está dentro de um nível aceitável. Não são necessárias ações urgentes.")
+    elif 25 < risk_percentage <= 50:
+        pdf.multi_cell(0, 10, txt="Risco moderado: O risco está em um nível intermediário. Monitoramento e ações preventivas são recomendadas.")
+    elif 50 < risk_percentage <= 75:
+        pdf.multi_cell(0, 10, txt="Risco alto: O risco está em um nível elevado. Ações corretivas e acompanhamento intensivo são necessários.")
+    else:
+        pdf.multi_cell(0, 10, txt="Risco muito alto: O risco está crítico e requer medidas imediatas e intensivas para mitigação.")
+
+    # Salvar o arquivo PDF em um diretório temporário
+    temp_dir = tempfile.mkdtemp()
+    pdf_output = os.path.join(temp_dir, f"{risk_analysis.replace(' ', '_')}_analise.pdf")
+    pdf.output(pdf_output)
     
-    # Salva o DataFrame em um arquivo CSV na área de trabalho
-    df.to_csv(filename, index=False)
-    st.success(f'Dados salvos com sucesso em {filename}')
+    return pdf_output
 
 # Título da aplicação
 st.title('Avaliação de Risco - Perguntas e Pesos')
@@ -85,8 +127,8 @@ else:
     st.write('Nenhuma pergunta foi adicionada.')
 
 # Opção de salvar os dados
-if st.button('Salvar Análise'):
-    # Organizar os dados para salvar
+if st.button('Salvar Análise como PDF'):
+    # Organizar os dados para gerar o PDF
     data = {
         'Análise de Risco': [risk_analysis] * len(questions),
         'Quem Validou': [validated_by] * len(questions),
@@ -94,12 +136,19 @@ if st.button('Salvar Análise'):
         'Resposta': responses,
         'Peso': weights
     }
+
+    # Caminho do logo
+    logo_path = r"C:\Users\BR05720889\OneDrive - Prosegur Cia. De Seguridad, S.A\Documentos\textos html\SEGURPRO TESTE\images.png"
     
-    # Definir o nome do arquivo e caminho completo para salvar na área de trabalho
-    desktop_path = os.path.join(os.path.expanduser("~"), "Desktop", "analises_risco")
-    
-    # Definir o nome do arquivo
-    filename = os.path.join(desktop_path, f'{risk_analysis.replace(" ", "_")}_dados.csv')
-    
-    # Salvar os dados no arquivo CSV
-    save_data_to_csv(data, filename)
+    # Gerar o PDF
+    pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
+
+    # Fornecer o link para download
+    st.success(f'Análise salva com sucesso como PDF!')
+    with open(pdf_file, "rb") as f:
+        st.download_button(
+            label="Clique para baixar o PDF",
+            data=f.read(),
+            file_name=os.path.basename(pdf_file),
+            mime="application/pdf"
+        )
