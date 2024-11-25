@@ -97,8 +97,11 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     
     return pdf_output
 
-# Título da aplicação
-st.title('Avaliação de Risco - Perguntas e Pesos')
+# Permitir que o usuário insira o título da aplicação
+app_title = st.text_input('Título da aplicação', 'Avaliação de Risco - Perguntas e Pesos')
+
+# Exibir o título inserido pelo usuário
+st.title(app_title)
 
 # Definir as perguntas
 num_questions = st.number_input('Quantas perguntas você quer adicionar?', min_value=1, max_value=10, value=3)
