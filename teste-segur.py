@@ -103,7 +103,7 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
         pdf.multi_cell(weight_width, num_lines * line_height, str(weight), border=1, align='C')
 
         # Mover para a próxima linha após processar as três colunas
-        pdf.ln(max(num_lines, 1) * line_height)
+        pdf.ln(num_lines * line_height)
 
     # Adicionar o percentual de risco
     pdf.ln(10)
@@ -188,10 +188,15 @@ if st.button('Salvar Análise como PDF'):
     }
 
     # URL da imagem no GitHub
-    image_url = "https://raw.githubusercontent.com/your-username/your-repo/main/logo.png"  # Substitua com o URL correto
-
+    image_url = "https://raw.githubusercontent.com/lexgadinni/segur/main/images.png"
+    
+    # Baixar a imagem do GitHub
     logo_path = download_image(image_url)
+    
+    # Gerar o PDF
+    pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
 
-    # Gerar e baixar o PDF
-    pdf_file = generate_pdf(pd.DataFrame(data), risk_analysis, validated_by, risk_percentage, logo_path)
-    st.download_button("Baixar PDF", pdf_file, file_name="analise_de_risco.pdf")
+    # Fornecer o link para download
+    st.success(f'Análise salva com sucesso como PDF!')
+    with open(pdf_file, "rb") as f:
+        st.download_button("Baixar PDF", f, file_name="analise_de_risco.pdf")
