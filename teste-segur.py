@@ -1,38 +1,49 @@
-import requests
+import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
+import os
 from fpdf import FPDF
 import tempfile
-import os
-import streamlit as st
 
-# Atualizar a função de gerar o PDF para usar o logo da URL fornecida
-def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_url):
+# Função para gerar o velocímetro
+def create_gauge(value):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=value,
+        title={"text": "Risco"},
+        gauge={
+            "axis": {"range": [None, 100]},
+            "bar": {"color": "black"},
+            "steps": [
+                {"range": [0, 25], "color": "green"},
+                {"range": [25, 50], "color": "yellow"},
+                {"range": [50, 75], "color": "orange"},
+                {"range": [75, 100], "color": "red"}
+            ]
+        }
+    ))
+    fig.update_layout(height=300, width=600)
+    return fig
+
+# Função para gerar o PDF com os dados
+def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-
-    # Baixar a imagem do logo diretamente da URL fornecida
-    if logo_url:
-        try:
-            response = requests.get(logo_url)
-            response.raise_for_status()  # Garante que a resposta foi bem-sucedida
-            # Salvar a imagem temporariamente
-            logo_path = os.path.join(tempfile.mkdtemp(), "logo.png")
-            with open(logo_path, "wb") as f:
-                f.write(response.content)  # Salva a imagem
-            pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho conforme necessário
-        except requests.exceptions.RequestException as e:
-            print(f"Erro ao baixar a imagem: {e}")
-            # Caso o download falhe, a imagem não será adicionada ao PDF
-            pdf.set_font("Arial", '', 12)
-            pdf.cell(200, 10, txt="Logo não carregado devido a um erro de rede.", ln=True)
-
-    # Continue com o restante do código do PDF (sem alterações)
+    
+    # Adicionar o logo
+    pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho do logo conforme necessário
+    
+    # Título
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt=f"Análise de Risco: {risk_analysis}", ln=True, align='C')
-    pdf.ln(10)
+
+    pdf.ln(10)  # Linha em branco
+
     pdf.set_font("Arial", '', 12)
     pdf.cell(200, 10, txt=f"Validado por: {validated_by}", ln=True)
-    pdf.ln(10)
+
+    pdf.ln(10)  # Linha em branco
 
     # Tabela de dados
     pdf.set_font("Arial", '', 10)
@@ -72,9 +83,6 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_url):
 
 # Título da aplicação
 st.title('Avaliação de Risco - Perguntas e Pesos')
-
-# Definir a URL do logo que você forneceu
-logo_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnwWi_O_IdR0kx6Txms27FANejY4FFxZbUjw&s"
 
 # Definir as perguntas
 num_questions = st.number_input('Quantas perguntas você quer adicionar?', min_value=1, max_value=10, value=3)
@@ -129,8 +137,11 @@ if st.button('Salvar Análise como PDF'):
         'Peso': weights
     }
 
-    # Gerar o PDF com o logo da URL fornecida
-    pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_url)
+    # Caminho do logo
+    logo_path = r"C:\Users\BR05720889\OneDrive - Prosegur Cia. De Seguridad, S.A\Documentos\textos html\SEGURPRO TESTE\images.png"
+    
+    # Gerar o PDF
+    pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
 
     # Fornecer o link para download
     st.success(f'Análise salva com sucesso como PDF!')
