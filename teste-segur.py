@@ -84,26 +84,29 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
     pdf.set_font("Arial", '', 10)
     for question, response, weight in zip(data['Pergunta'], data['Resposta'], data['Peso']):
         # Calcular o número de linhas para a pergunta
-        num_lines = get_num_lines(question, question_width, pdf)
+        num_lines_question = get_num_lines(question, question_width, pdf)
+        num_lines_response = get_num_lines(response, response_width, pdf)
+        num_lines_weight = get_num_lines(str(weight), weight_width, pdf)
         line_height = 5  # Definir altura da linha
-        
+
         # Adicionar a célula de pergunta com multi-cell para quebras de linha
         pdf.multi_cell(question_width, line_height, question, border=1)
 
         # Obter a posição atual após a pergunta
         x_current = pdf.get_x() + question_width
-        y_current = pdf.get_y() - (num_lines * line_height)
+        y_current = pdf.get_y() - (num_lines_question * line_height)
         
-        # Ajustar a altura das células de resposta e peso
+        # Ajustar a altura das células de resposta
         pdf.set_xy(x_current, y_current)
-        pdf.multi_cell(response_width, num_lines * line_height, response, border=1, align='C')
+        pdf.multi_cell(response_width, num_lines_response * line_height, response, border=1, align='C')
 
+        # Ajustar a altura das células de peso
         x_next = pdf.get_x() + response_width
         pdf.set_xy(x_next, y_current)
-        pdf.multi_cell(weight_width, num_lines * line_height, str(weight), border=1, align='C')
+        pdf.multi_cell(weight_width, num_lines_weight * line_height, str(weight), border=1, align='C')
 
         # Mover para a próxima linha após processar as três colunas
-        pdf.ln(num_lines * line_height)
+        pdf.ln(max(num_lines_question, num_lines_response, num_lines_weight) * line_height)
 
     # Adicionar o percentual de risco
     pdf.ln(10)
@@ -178,25 +181,25 @@ else:
 
 # Opção de salvar os dados
 if st.button('Salvar Análise como PDF'):
-    # Organizar os dados para gerar o PDF
-    data = {
-        'Análise de Risco': [risk_analysis] * len(questions),
-        'Quem Validou': [validated_by] * len(questions),
+    # Criar um DataFrame com as perguntas, respostas e pesos
+    data = pd.DataFrame({
         'Pergunta': questions,
         'Resposta': responses,
         'Peso': weights
-    }
+    })
 
-    # URL da imagem no GitHub
-    image_url = "https://raw.githubusercontent.com/lexgadinni/segur/main/images.png"
-    
-    # Baixar a imagem do GitHub
-    logo_path = download_image(image_url)
-    
+    # Baixar a imagem de logo (se necessário)
+    logo_url = "https://example.com/logo.png"  # Substitua pela URL da imagem
+    logo_path = download_image(logo_url)
+
     # Gerar o PDF
-    pdf_file = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
+    pdf_output = generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path)
 
-    # Fornecer o link para download
-    st.success(f'Análise salva com sucesso como PDF!')
-    with open(pdf_file, "rb") as f:
-        st.download_button("Baixar PDF", f, file_name="analise_de_risco.pdf")
+    # Fornecer link para download
+    with open(pdf_output, "rb") as file:
+        st.download_button(
+            label="Baixar PDF",
+            data=file,
+            file_name=f"{risk_analysis}_analise.pdf",
+            mime="application/pdf"
+        )
