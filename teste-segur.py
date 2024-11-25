@@ -89,24 +89,20 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_path):
         # Calcular o número de linhas que a pergunta ocupará
         num_lines = get_num_lines(question, question_width, pdf)
         line_height = 5  # Altura de cada linha
+        total_height = num_lines * line_height  # Altura total da célula da pergunta
         
         # Usar multi_cell para a pergunta (coluna larga)
+        y_before = pdf.get_y()
         pdf.multi_cell(question_width, line_height, question, border=1)
+        y_after = pdf.get_y()
         
-        # Mover o cursor de volta para a linha da resposta e peso
-        x_current = pdf.get_x() + question_width
-        y_current = pdf.get_y() - (num_lines * line_height)  # Mover para a linha superior
+        # Definir a altura para a célula de resposta e peso, usando a mesma altura da pergunta
+        pdf.set_xy(pdf.get_x() + question_width, y_before)  # Mover o cursor para a célula de resposta
+        pdf.multi_cell(response_width, total_height, response, border=1, align='C')
+
+        pdf.set_xy(pdf.get_x() + response_width, y_before)  # Mover o cursor para a célula de peso
+        pdf.multi_cell(weight_width, total_height, str(weight), border=1, align='C')
         
-        # Ajustar a altura das células de resposta e peso para se alinharem à pergunta
-        pdf.set_xy(x_current, y_current)
-        pdf.multi_cell(response_width, num_lines * line_height, response, border=1, align='C')
-        
-        # Colocar o peso ao lado da resposta com a mesma altura
-        x_next = pdf.get_x() + response_width
-        pdf.set_xy(x_next, y_current)
-        pdf.multi_cell(weight_width, num_lines * line_height, str(weight), border=1, align='C')
-        
-        # Após a última célula, mover o cursor para a próxima linha
         pdf.ln()
 
     # Adicionar o percentual de risco e a explicação
@@ -202,10 +198,5 @@ if st.button('Salvar Análise como PDF'):
 
     # Fornecer o link para download
     st.success(f'Análise salva com sucesso como PDF!')
-    with open(pdf_file, "rb") as f:
-        st.download_button(
-            label="Clique para baixar o PDF",
-            data=f.read(),
-            file_name=os.path.basename(pdf_file),
-            mime="application/pdf"
-        )
+    with open(pdf_file, "rb") as file:
+        st.download_button("Baixar PDF", data=file, file_name=f'{risk_analysis}_analise.pdf')
