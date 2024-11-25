@@ -12,13 +12,19 @@ def generate_pdf(data, risk_analysis, validated_by, risk_percentage, logo_url):
 
     # Baixar a imagem do logo diretamente da URL fornecida
     if logo_url:
-        response = requests.get(logo_url)
-        if response.status_code == 200:
+        try:
+            response = requests.get(logo_url)
+            response.raise_for_status()  # Garante que a resposta foi bem-sucedida
             # Salvar a imagem temporariamente
             logo_path = os.path.join(tempfile.mkdtemp(), "logo.png")
             with open(logo_path, "wb") as f:
                 f.write(response.content)  # Salva a imagem
             pdf.image(logo_path, x=10, y=8, w=30)  # Ajuste a posição e o tamanho conforme necessário
+        except requests.exceptions.RequestException as e:
+            print(f"Erro ao baixar a imagem: {e}")
+            # Caso o download falhe, a imagem não será adicionada ao PDF
+            pdf.set_font("Arial", '', 12)
+            pdf.cell(200, 10, txt="Logo não carregado devido a um erro de rede.", ln=True)
 
     # Continue com o restante do código do PDF (sem alterações)
     pdf.set_font("Arial", 'B', 16)
